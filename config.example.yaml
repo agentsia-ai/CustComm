@@ -1,0 +1,115 @@
+# ============================================================
+# CustComm — Configuration Template
+# Copy to config.yaml and customize for your deployment.
+#
+# config.yaml is gitignored. Never commit a configured copy
+# of this file to a public repository.
+# ============================================================
+
+# --- Identity ---
+# Who is behind this inbox? The operator_email is pinned as the From address
+# on every sent reply and can't be overridden per-draft.
+client_name: "Your Business Name"
+operator_name: "Your Name"
+operator_title: ""              # optional, e.g. "Customer Success Lead"
+operator_email: "you@example.com"
+
+# --- AI Customization ---
+# Point at external prompt files to override the engine's built-in prompts
+# without subclassing. Paths are relative to the working directory at runtime.
+# Leave commented out to use the generic defaults that ship with CustComm.
+ai:
+  model: "claude-sonnet-4-20250514"
+  # intent_prompt_path: "./prompts/intent.txt"
+  # reply_prompt_path: "./prompts/reply.txt"
+  # appointment_prompt_path: "./prompts/appointment.txt"
+
+  # Classifier calls below this confidence collapse to intent=uncertain,
+  # which refuses to auto-draft. Keep this high enough that you trust
+  # everything the drafter touches.
+  min_intent_confidence: 0.55
+
+  # Hard cap on reply length. If Claude exceeds it, the draft is truncated
+  # and marked in its audit trail. Guard against runaway generations.
+  max_reply_chars: 2000
+
+# --- Inbox (inbound mail) ---
+inbox:
+  # "gmail" (recommended, primary) | "imap" (planned stub)
+  backend: "gmail"
+  gmail:
+    # Gmail search operator applied when polling for new mail.
+    # Everything Gmail search understands works here.
+    query: "in:inbox is:unread newer_than:7d"
+  poll_interval_seconds: 300    # reserved for a future daemon; CLI is manual
+  # Auto-skip messages whose From matches any of these (case-insensitive substring).
+  # Useful for no-reply addresses, mailer-daemons, out-of-office bots.
+  ignore_senders:
+    - "no-reply@"
+    - "noreply@"
+    - "mailer-daemon@"
+    - "postmaster@"
+
+# --- Outreach (outbound mail) ---
+outreach:
+  # "gmail" (reuses the same Gmail account as the inbox) | "smtp"
+  backend: "gmail"
+
+  # SAFETY: both of these default to the strict setting. The engine refuses
+  # to send anything with require_approval=true unless a draft has been
+  # explicitly approved. auto_send is belt-and-braces; leaving it false
+  # prevents a future misconfiguration from ever silently auto-sending.
+  require_approval: true
+  auto_send: false
+
+  # Max replies sent per day — counted by DB, enforced at send time.
+  daily_send_limit: 100
+
+  # Quoting style when replying: "none" | "bottom" | "top"
+  reply_quoting: "bottom"
+
+  # Appended to every sent reply. {operator_name}, {operator_title},
+  # {operator_email} are substituted at runtime.
+  signature: |
+    Best,
+    {operator_name}
+    {operator_email}
+
+  # Intents the drafter is allowed to auto-draft for. Any intent not in
+  # this list lands the thread in status=escalated for human handling.
+  # (Also: intent=uncertain is always excluded regardless.)
+  auto_draft_intents:
+    - "new_inquiry"
+    - "followup_question"
+    - "appointment_request"
+    - "reschedule"
+
+# --- Conversation history ---
+# Controls how much of a long thread the drafter sees verbatim vs. summarized.
+history:
+  # Last N messages (inbound + outbound combined) shown verbatim to the drafter.
+  full_messages_kept: 10
+  # Once a thread has more than this many total messages, older ones are
+  # folded into a rolling Thread.summary via ReplyDrafter.summarize_history().
+  summarize_at_messages: 12
+  max_summary_chars: 1200
+
+# --- Scheduler (follow-ups + appointments) ---
+scheduler:
+  # Days after our last outbound message that a thread in AWAITING_CUSTOMER
+  # gets nudged back into the drafter queue as a follow-up.
+  followup_days: [2, 5, 10]
+
+  business_hours:
+    timezone: "America/New_York"
+    start: "09:00"
+    end: "17:00"
+    weekdays_only: true
+
+  appointment_slot_minutes: 30
+  appointment_buffer_minutes: 15
+
+# --- Database ---
+database:
+  backend: "sqlite"
+  sqlite_path: "./data/custcomm.db"
