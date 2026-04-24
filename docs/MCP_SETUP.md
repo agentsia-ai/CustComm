@@ -46,15 +46,17 @@ Add CustComm to the `mcpServers` section:
 ```
 
 On Windows, because Claude Desktop doesn't inherit your shell's PATH, it's
-safest to point at the venv's absolute executable path directly:
+safest to point at the venv's absolute executable path directly. Replace
+`C:\\path\\to\\your\\CustComm` with the real directory where you cloned the
+repo (e.g. the folder that contains this repo's `pyproject.toml`):
 
 ```json
 {
   "mcpServers": {
     "custcomm": {
-      "command": "D:\\agentsia\\CustComm\\.venv\\Scripts\\custcomm.exe",
+      "command": "C:\\path\\to\\your\\CustComm\\.venv\\Scripts\\custcomm.exe",
       "args": ["mcp"],
-      "cwd": "D:\\agentsia\\CustComm"
+      "cwd": "C:\\path\\to\\your\\CustComm"
     }
   }
 }
@@ -85,13 +87,15 @@ For ARIA (in the `agentsia-core` private repo):
 }
 ```
 
-On Windows, again, point at the absolute exe path:
+On Windows, again, point at the absolute exe path. Replace
+`C:\\path\\to\\your\\agentsia-core` with your real `agentsia-core` clone
+root:
 
 ```json
 {
   "mcpServers": {
     "aria": {
-      "command": "D:\\agentsia\\agentsia-core\\.venv\\Scripts\\agentsia.exe",
+      "command": "C:\\path\\to\\your\\agentsia-core\\.venv\\Scripts\\agentsia.exe",
       "args": ["aria", "mcp"]
     }
   }
