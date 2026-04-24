@@ -2,10 +2,9 @@
 
 from __future__ import annotations
 
-from datetime import datetime
-
 import pytest
 
+from custcomm._time import now_utc
 from custcomm.crm.database import ThreadDatabase
 from custcomm.models import (
     AttachmentRef,
@@ -52,7 +51,7 @@ async def test_insert_message_dedups_by_header(
         from_addr="x@example.com",
         body_text="hello",
         message_id_header="<m-1@example.com>",
-        received_at=datetime.utcnow(),
+        received_at=now_utc(),
     )
     assert await db.insert_message(msg) is True
 
@@ -142,7 +141,7 @@ async def test_attachment_round_trip(initialized_db: ThreadDatabase) -> None:
         from_addr="att@example.com",
         body_text="see file",
         message_id_header="<att-1@example.com>",
-        received_at=datetime.utcnow(),
+        received_at=now_utc(),
         attachment_log=[
             AttachmentRef(filename="doc.pdf", mime_type="application/pdf", size_bytes=1024)
         ],

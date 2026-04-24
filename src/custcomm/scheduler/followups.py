@@ -13,6 +13,7 @@ from __future__ import annotations
 import logging
 from datetime import datetime, timedelta
 
+from custcomm._time import now_utc
 from custcomm.config.loader import CustCommConfig
 from custcomm.crm.database import ThreadDatabase
 from custcomm.models import Intent, Thread, ThreadStatus
@@ -35,7 +36,7 @@ class FollowupScheduler:
         thread's existing follow-up records (next_followup_at + status cycling
         through TRIAGED); this keeps the implementation state-light.
         """
-        now = now or datetime.utcnow()
+        now = now or now_utc()
         awaiting = await self.db.list_threads(
             status=ThreadStatus.AWAITING_CUSTOMER, limit=500
         )

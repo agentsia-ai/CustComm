@@ -14,11 +14,11 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
-from datetime import datetime
 from pathlib import Path
 
 import anthropic
 
+from custcomm._time import now_utc
 from custcomm.config.loader import APIKeys, CustCommConfig
 from custcomm.models import Intent, IntentResult, Message, Thread
 
@@ -132,7 +132,7 @@ Return only JSON."""
                 intent=intent,
                 confidence=confidence,
                 reasoning=str(data.get("reasoning") or ""),
-                classified_at=datetime.utcnow(),
+                classified_at=now_utc(),
             )
         except (json.JSONDecodeError, KeyError, ValueError) as e:
             logger.error(f"Classifier failed to parse response: {e}")

@@ -13,6 +13,8 @@ from uuid import uuid4
 
 from pydantic import BaseModel, EmailStr, Field
 
+from custcomm._time import now_utc
+
 
 # ── Enums ─────────────────────────────────────────────────────────────────────
 
@@ -88,7 +90,7 @@ class IntentResult(BaseModel):
     intent: Intent = Intent.UNCERTAIN
     confidence: float = 0.0
     reasoning: str = ""
-    classified_at: datetime = Field(default_factory=datetime.utcnow)
+    classified_at: datetime = Field(default_factory=now_utc)
 
 
 class TimeSlot(BaseModel):
@@ -124,8 +126,8 @@ class Customer(BaseModel):
     email: str                       # normalized lowercase (DB UNIQUE)
     display_name: Optional[str] = None
     phone: Optional[str] = None
-    first_seen_at: datetime = Field(default_factory=datetime.utcnow)
-    last_seen_at: datetime = Field(default_factory=datetime.utcnow)
+    first_seen_at: datetime = Field(default_factory=now_utc)
+    last_seen_at: datetime = Field(default_factory=now_utc)
     notes: str = ""
     tags: list[str] = []
 
@@ -169,7 +171,7 @@ class Draft(BaseModel):
     subject: str = ""
     body: str = ""
 
-    generated_at: datetime = Field(default_factory=datetime.utcnow)
+    generated_at: datetime = Field(default_factory=now_utc)
     generated_by: str = "ReplyDrafter"      # class name for audit
     intent_at_time_of_draft: Intent = Intent.UNCERTAIN
 
@@ -195,8 +197,8 @@ class Appointment(BaseModel):
     location_or_link: Optional[str] = None
     notes: str = ""
 
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=now_utc)
+    updated_at: datetime = Field(default_factory=now_utc)
 
 
 class Thread(BaseModel):
@@ -220,14 +222,14 @@ class Thread(BaseModel):
 
     appointment_id: Optional[str] = None
 
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=now_utc)
+    updated_at: datetime = Field(default_factory=now_utc)
 
     tags: list[str] = []
     notes: str = ""
 
     def touch(self) -> None:
-        self.updated_at = datetime.utcnow()
+        self.updated_at = now_utc()
 
     @property
     def needs_reply(self) -> bool:
@@ -259,7 +261,7 @@ class RawInboundMessage(BaseModel):
     body_text: str = ""
     body_html: Optional[str] = None
 
-    received_at: datetime = Field(default_factory=datetime.utcnow)
+    received_at: datetime = Field(default_factory=now_utc)
     attachments: list[AttachmentRef] = []
     raw_headers: dict[str, Any] = {}
 

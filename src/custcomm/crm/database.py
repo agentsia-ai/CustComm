@@ -12,12 +12,12 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import datetime
 from pathlib import Path
 from typing import Any, Optional
 
 import aiosqlite
 
+from custcomm._time import now_utc, parse_iso, to_iso
 from custcomm.models import (
     Appointment,
     AppointmentStatus,
@@ -34,14 +34,6 @@ from custcomm.models import (
 )
 
 logger = logging.getLogger(__name__)
-
-
-def _iso(dt: datetime | None) -> str | None:
-    return dt.isoformat() if dt else None
-
-
-def _parse_iso(s: str | None) -> datetime | None:
-    return datetime.fromisoformat(s) if s else None
 
 
 class ThreadDatabase:
@@ -215,7 +207,7 @@ class ThreadDatabase:
                 phone = customer.phone or existing["phone"]
                 last_seen = max(
                     customer.last_seen_at,
-                    _parse_iso(existing["last_seen_at"]) or customer.last_seen_at,
+                    parse_iso(existing["last_seen_at"]) or customer.last_seen_at,
                 )
                 await db.execute(
                     """
@@ -405,8 +397,8 @@ class ThreadDatabase:
                     message.message_id_header,
                     message.in_reply_to_header,
                     json.dumps(message.references_headers),
-                    _iso(message.received_at),
-                    _iso(message.sent_at),
+                    to_iso(message.received_at),
+                    to_iso(message.sent_at),
                     json.dumps(message.raw_data),
                     json.dumps([a.model_dump() for a in message.attachment_log]),
                 ),
@@ -503,9 +495,9 @@ class ThreadDatabase:
                     draft.generated_by,
                     draft.intent_at_time_of_draft.value,
                     draft.approval_token,
-                    _iso(draft.approved_at),
+                    to_iso(draft.approved_at),
                     draft.approved_by,
-                    _iso(draft.sent_at),
+                    to_iso(draft.sent_at),
                     draft.sent_message_id,
                     draft.supersedes_draft_id,
                 ),
@@ -554,7 +546,7 @@ class ThreadDatabase:
         self, draft_id: str, approved_by: str = "cli"
     ) -> bool:
         """Atomic approve. Returns True if this call flipped the status."""
-        now = datetime.utcnow().isoformat()
+        now = now_utc().isoformat()
         async with aiosqlite.connect(self.db_path) as db:
             cur = await db.execute(
                 """
@@ -574,7 +566,7 @@ class ThreadDatabase:
     ) -> bool:
         """Atomic send-guard. Only flips the row if status='approved' AND
         approval_token matches. Returns True if this call owned the send."""
-        now = datetime.utcnow().isoformat()
+        now = now_utc().isoformat()
         async with aiosqlite.connect(self.db_path) as db:
             cur = await db.execute(
                 """
@@ -605,7 +597,7 @@ class ThreadDatabase:
     # ── appointments ──────────────────────────────────────────────────────────
 
     async def upsert_appointment(self, appointment: Appointment) -> None:
-        appointment.updated_at = datetime.utcnow()
+        appointment.updated_at = now_utc()
         async with aiosqlite.connect(self.db_path) as db:
             async with db.execute(
                 "SELECT id FROM appointments WHERE id = ?", (appointment.id,)
@@ -676,8 +668,8 @@ def _row_to_customer(row: aiosqlite.Row) -> Customer:
         email=row["email"],
         display_name=row["display_name"],
         phone=row["phone"],
-        first_seen_at=_parse_iso(row["first_seen_at"]) or datetime.utcnow(),
-        last_seen_at=_parse_iso(row["last_seen_at"]) or datetime.utcnow(),
+        first_seen_at=parse_iso(row["first_seen_at"]) or now_utc(),
+        last_seen_at=parse_iso(row["last_seen_at"]) or now_utc(),
         notes=row["notes"] or "",
         tags=json.loads(row["tags_json"] or "[]"),
     )
@@ -693,11 +685,11 @@ def _thread_to_row(t: Thread) -> tuple[Any, ...]:
         t.intent_confidence,
         t.intent_reasoning,
         t.summary,
-        _iso(t.snoozed_until),
+        to_iso(t.snoozed_until),
         t.escalation_reason,
-        _iso(t.last_inbound_at),
-        _iso(t.last_outbound_at),
-        _iso(t.next_followup_at),
+        to_iso(t.last_inbound_at),
+        to_iso(t.last_outbound_at),
+        to_iso(t.next_followup_at),
         t.appointment_id,
         json.dumps(t.tags),
         t.notes,
@@ -716,16 +708,16 @@ def _row_to_thread(row: aiosqlite.Row) -> Thread:
         intent_confidence=row["intent_confidence"],
         intent_reasoning=row["intent_reasoning"] or "",
         summary=row["summary"] or "",
-        snoozed_until=_parse_iso(row["snoozed_until"]),
+        snoozed_until=parse_iso(row["snoozed_until"]),
         escalation_reason=row["escalation_reason"] or "",
-        last_inbound_at=_parse_iso(row["last_inbound_at"]),
-        last_outbound_at=_parse_iso(row["last_outbound_at"]),
-        next_followup_at=_parse_iso(row["next_followup_at"]),
+        last_inbound_at=parse_iso(row["last_inbound_at"]),
+        last_outbound_at=parse_iso(row["last_outbound_at"]),
+        next_followup_at=parse_iso(row["next_followup_at"]),
         appointment_id=row["appointment_id"],
         tags=json.loads(row["tags_json"] or "[]"),
         notes=row["notes"] or "",
-        created_at=_parse_iso(row["created_at"]) or datetime.utcnow(),
-        updated_at=_parse_iso(row["updated_at"]) or datetime.utcnow(),
+        created_at=parse_iso(row["created_at"]) or now_utc(),
+        updated_at=parse_iso(row["updated_at"]) or now_utc(),
     )
 
 
@@ -745,8 +737,8 @@ def _row_to_message(row: aiosqlite.Row) -> Message:
         message_id_header=row["message_id_header"],
         in_reply_to_header=row["in_reply_to_header"],
         references_headers=json.loads(row["references_json"] or "[]"),
-        received_at=_parse_iso(row["received_at"]),
-        sent_at=_parse_iso(row["sent_at"]),
+        received_at=parse_iso(row["received_at"]),
+        sent_at=parse_iso(row["sent_at"]),
         raw_data=json.loads(row["raw_data_json"] or "{}"),
         attachment_log=[
             AttachmentRef(**a) for a in json.loads(row["attachment_log_json"] or "[]")
@@ -761,15 +753,15 @@ def _row_to_draft(row: aiosqlite.Row) -> Draft:
         status=DraftStatus(row["status"]),
         subject=row["subject"] or "",
         body=row["body"] or "",
-        generated_at=_parse_iso(row["generated_at"]) or datetime.utcnow(),
+        generated_at=parse_iso(row["generated_at"]) or now_utc(),
         generated_by=row["generated_by"] or "ReplyDrafter",
         intent_at_time_of_draft=Intent(row["intent_at_time_of_draft"])
         if row["intent_at_time_of_draft"]
         else Intent.UNCERTAIN,
         approval_token=row["approval_token"],
-        approved_at=_parse_iso(row["approved_at"]),
+        approved_at=parse_iso(row["approved_at"]),
         approved_by=row["approved_by"],
-        sent_at=_parse_iso(row["sent_at"]),
+        sent_at=parse_iso(row["sent_at"]),
         sent_message_id=row["sent_message_id"],
         supersedes_draft_id=row["supersedes_draft_id"],
     )
@@ -781,11 +773,11 @@ def _row_to_appointment(row: aiosqlite.Row) -> Appointment:
         thread_id=row["thread_id"],
         customer_id=row["customer_id"],
         status=AppointmentStatus(row["status"]),
-        start_at=_parse_iso(row["start_at"]) or datetime.utcnow(),
-        end_at=_parse_iso(row["end_at"]) or datetime.utcnow(),
+        start_at=parse_iso(row["start_at"]) or now_utc(),
+        end_at=parse_iso(row["end_at"]) or now_utc(),
         timezone=row["timezone"] or "UTC",
         location_or_link=row["location_or_link"],
         notes=row["notes"] or "",
-        created_at=_parse_iso(row["created_at"]) or datetime.utcnow(),
-        updated_at=_parse_iso(row["updated_at"]) or datetime.utcnow(),
+        created_at=parse_iso(row["created_at"]) or now_utc(),
+        updated_at=parse_iso(row["updated_at"]) or now_utc(),
     )

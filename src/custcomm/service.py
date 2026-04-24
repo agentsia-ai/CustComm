@@ -8,9 +8,9 @@ the caller controls lifecycle. The service layer never owns state.
 from __future__ import annotations
 
 import logging
-from datetime import datetime
 from typing import Optional
 
+from custcomm._time import now_utc
 from custcomm.ai.classifier import IntentClassifier
 from custcomm.ai.drafter import ReplyDrafter
 from custcomm.config.loader import APIKeys, CustCommConfig
@@ -87,7 +87,7 @@ async def _ingest_inbound(
     customer = Customer(
         email=raw.from_addr,
         display_name=raw.from_name,
-        last_seen_at=raw.received_at or datetime.utcnow(),
+        last_seen_at=raw.received_at or now_utc(),
     )
     customer = await db.upsert_customer(customer)
 
@@ -117,7 +117,7 @@ async def _ingest_inbound(
                 ThreadStatus.CLOSED,
             ):
                 thread.status = ThreadStatus.NEW
-            thread.last_inbound_at = raw.received_at or datetime.utcnow()
+            thread.last_inbound_at = raw.received_at or now_utc()
             await db.upsert_thread(thread)
 
     message = Message(
@@ -361,13 +361,13 @@ async def send_approved(
             references_headers=(
                 latest_inbound.references_headers if latest_inbound else []
             ),
-            sent_at=datetime.utcnow(),
+            sent_at=now_utc(),
             raw_data={"provider_id": result.provider_id} if result.provider_id else {},
         )
         await db.insert_message(outbound)
 
         thread.status = ThreadStatus.AWAITING_CUSTOMER
-        thread.last_outbound_at = datetime.utcnow()
+        thread.last_outbound_at = now_utc()
         await db.upsert_thread(thread)
         sent += 1
 

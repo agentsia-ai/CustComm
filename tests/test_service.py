@@ -4,12 +4,12 @@ send flow in a single pass."""
 
 from __future__ import annotations
 
-from datetime import datetime
 from typing import AsyncIterator
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
+from custcomm._time import now_utc
 from custcomm.crm.database import ThreadDatabase
 from custcomm.inbox.base import InboxConnector
 from custcomm.models import (
@@ -77,7 +77,7 @@ async def test_end_to_end_happy_path(
         from_name="Cust",
         subject="Can I get pricing?",
         body_text="Hi, interested in your services. What does it cost?",
-        received_at=datetime.utcnow(),
+        received_at=now_utc(),
     )
 
     monkeypatch.setattr(
@@ -188,7 +188,7 @@ async def test_draft_skips_uncertain_and_complaint(
                 from_addr="u@example.com",
                 body_text="hi",
                 message_id_header=f"<m-{intent.value}@x>",
-                received_at=datetime.utcnow(),
+                received_at=now_utc(),
             )
         )
 

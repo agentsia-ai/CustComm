@@ -13,11 +13,12 @@ from __future__ import annotations
 
 import base64
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from email.utils import getaddresses, parsedate_to_datetime
 from pathlib import Path
 from typing import Any, AsyncIterator
 
+from custcomm._time import now_utc
 from custcomm.inbox.base import InboxConnector
 from custcomm.models import AttachmentRef, RawInboundMessage
 
@@ -109,18 +110,24 @@ def _gmail_to_raw_inbound(full: dict) -> RawInboundMessage | None:
     cc_addrs = [addr for _, addr in getaddresses([headers.get("cc", "")]) if addr]
 
     # Received timestamp: Gmail's internalDate is ms-since-epoch; headers also
-    # carry a Date. Prefer internalDate when available.
-    received_at = datetime.utcnow()
+    # carry a Date. Prefer internalDate when available. All branches produce
+    # an aware UTC datetime — `parsedate_to_datetime` may return naive when
+    # the Date header lacks an offset, so we attach UTC in that case.
+    received_at = now_utc()
     if "internalDate" in full:
         try:
-            received_at = datetime.utcfromtimestamp(int(full["internalDate"]) / 1000.0)
+            received_at = datetime.fromtimestamp(
+                int(full["internalDate"]) / 1000.0, tz=timezone.utc
+            )
         except (ValueError, TypeError):
             pass
     elif "date" in headers:
         try:
             parsed = parsedate_to_datetime(headers["date"])
             if parsed:
-                received_at = parsed.replace(tzinfo=None)
+                if parsed.tzinfo is None:
+                    parsed = parsed.replace(tzinfo=timezone.utc)
+                received_at = parsed.astimezone(timezone.utc)
         except (TypeError, ValueError):
             pass
 

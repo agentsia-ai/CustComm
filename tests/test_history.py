@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import timedelta
 from typing import List
 from unittest.mock import AsyncMock
 
 import pytest
 
+from custcomm._time import now_utc
 from custcomm.conversation.history import ThreadHistoryBuilder
 from custcomm.crm.database import ThreadDatabase
 from custcomm.models import (
@@ -23,7 +24,7 @@ async def _seed(db: ThreadDatabase, n_messages: int) -> tuple[Thread, List[Messa
     thread = Thread(customer_id=customer.id, subject="history")
     await db.upsert_thread(thread)
     msgs: list[Message] = []
-    base = datetime.utcnow() - timedelta(days=30)
+    base = now_utc() - timedelta(days=30)
     for i in range(n_messages):
         m = Message(
             thread_id=thread.id,

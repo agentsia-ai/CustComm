@@ -2,10 +2,9 @@
 
 from __future__ import annotations
 
-from datetime import datetime
-
 import pytest
 
+from custcomm._time import now_utc
 from custcomm.conversation.threading import normalize_subject, resolve_thread_id
 from custcomm.crm.database import ThreadDatabase
 from custcomm.models import (
@@ -48,7 +47,7 @@ async def test_resolve_thread_by_in_reply_to(initialized_db: ThreadDatabase) -> 
             subject="Order inquiry",
             body_text="hi",
             message_id_header="<msg-1@example.com>",
-            received_at=datetime.utcnow(),
+            received_at=now_utc(),
         )
     )
 
