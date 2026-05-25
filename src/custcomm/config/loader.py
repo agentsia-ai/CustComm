@@ -13,7 +13,9 @@ from typing import Any
 
 import yaml
 from dotenv import load_dotenv
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
+
+from custcomm.config.business_hours import BusinessHours
 
 load_dotenv()
 
@@ -81,14 +83,18 @@ class HistoryConfig(BaseModel):
 
 class SchedulerConfig(BaseModel):
     followup_days: list[int] = [2, 5, 10]
-    business_hours: dict[str, Any] = {
-        "timezone": "America/New_York",
-        "start": "09:00",
-        "end": "17:00",
-        "weekdays_only": True,
-    }
+    business_hours: BusinessHours = Field(default_factory=BusinessHours.default_legacy)
     appointment_slot_minutes: int = 30
     appointment_buffer_minutes: int = 15
+
+    @field_validator("business_hours", mode="before")
+    @classmethod
+    def _coerce_business_hours(cls, v: Any) -> BusinessHours:
+        if isinstance(v, BusinessHours):
+            return v
+        if isinstance(v, dict):
+            return BusinessHours.from_config(v)
+        raise ValueError("business_hours must be a mapping")
 
 
 class DatabaseConfig(BaseModel):
