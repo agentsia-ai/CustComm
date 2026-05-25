@@ -11,9 +11,10 @@ integration point is already clean.
 from __future__ import annotations
 
 import logging
-from datetime import date, datetime, time, timedelta
+from datetime import date, datetime, timedelta
 from typing import Optional
 
+from custcomm.config.business_hours import parse_hhmm
 from custcomm.config.loader import CustCommConfig
 from custcomm.crm.database import ThreadDatabase
 from custcomm.models import (
@@ -97,17 +98,17 @@ class AppointmentStore:
         or similar.
         """
         bh = self.config.scheduler.business_hours
-        tz = tz_name or bh.get("timezone", "UTC")
-
-        if bh.get("weekdays_only", True) and day.weekday() >= 5:
+        tz = tz_name or bh.timezone
+        day_sched = bh.schedule_for_date(day)
+        if not day_sched.enabled:
             return []
 
         slot_mins = self.config.scheduler.appointment_slot_minutes
-        start_h, start_m = _parse_hhmm(bh.get("start", "09:00"))
-        end_h, end_m = _parse_hhmm(bh.get("end", "17:00"))
+        start_t = parse_hhmm(day_sched.start)
+        end_t = parse_hhmm(day_sched.end)
 
-        cursor = datetime.combine(day, time(hour=start_h, minute=start_m))
-        end_of_day = datetime.combine(day, time(hour=end_h, minute=end_m))
+        cursor = datetime.combine(day, start_t)
+        end_of_day = datetime.combine(day, end_t)
         slots: list[TimeSlot] = []
         while cursor + timedelta(minutes=slot_mins) <= end_of_day and len(slots) < count:
             end = cursor + timedelta(minutes=slot_mins)
@@ -116,8 +117,3 @@ class AppointmentStore:
                 minutes=self.config.scheduler.appointment_buffer_minutes
             )
         return slots
-
-
-def _parse_hhmm(s: str) -> tuple[int, int]:
-    h, m = s.split(":")
-    return int(h), int(m)
