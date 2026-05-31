@@ -18,7 +18,10 @@ def test_load_config_reads_yaml(tmp_path: Path) -> None:
             {
                 "client_name": "Example Co",
                 "operator_name": "Alex",
+                "operator_title": "Support Lead",
                 "operator_email": "alex@example.com",
+                "agent_name": "Inbox Assistant",
+                "agent_email": "assistant@example.com",
                 "ai": {"model": "claude-sonnet-4-20250514"},
             }
         ),
@@ -26,7 +29,11 @@ def test_load_config_reads_yaml(tmp_path: Path) -> None:
     )
     cfg = load_config(cfg_path)
     assert cfg.client_name == "Example Co"
+    assert cfg.operator_name == "Alex"
+    assert cfg.operator_title == "Support Lead"
     assert cfg.operator_email == "alex@example.com"
+    assert cfg.agent_name == "Inbox Assistant"
+    assert cfg.agent_email == "assistant@example.com"
     assert cfg.outreach.require_approval is True  # safety default
     assert cfg.outreach.auto_send is False  # safety default
 

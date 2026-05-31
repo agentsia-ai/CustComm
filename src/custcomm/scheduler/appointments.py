@@ -99,13 +99,14 @@ class AppointmentStore:
         """
         bh = self.config.scheduler.business_hours
         tz = tz_name or bh.timezone
-        day_sched = bh.schedule_for_date(day)
-        if not day_sched.enabled:
+        windows = bh.windows_for_date(day)
+        if not windows:
             return []
 
         slot_mins = self.config.scheduler.appointment_slot_minutes
-        start_t = parse_hhmm(day_sched.start)
-        end_t = parse_hhmm(day_sched.end)
+        window = windows[0]
+        start_t = parse_hhmm(window.open_at)
+        end_t = parse_hhmm(window.close_at)
 
         cursor = datetime.combine(day, start_t)
         end_of_day = datetime.combine(day, end_t)

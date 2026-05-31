@@ -232,5 +232,6 @@ def _append_signature(body: str, template: str, config) -> str:
         operator_name=config.operator_name,
         operator_title=config.operator_title,
         operator_email=config.operator_email,
+        client_name=config.client_name,
     )
     return f"{body.strip()}\n\n{sig.strip()}"

@@ -7,12 +7,15 @@
 # ============================================================
 
 # --- Identity ---
-# Who is behind this inbox? The operator_email is pinned as the From address
-# on every sent reply and can't be overridden per-draft.
+# operator_* — human behind the inbox (From address + signature).
+# agent_* — optional agent identity for downstream persona deployments;
+# not used by the generic CustComm engine for outbound mail or MCP branding.
 client_name: "Your Business Name"
 operator_name: "Your Name"
 operator_title: ""              # optional, e.g. "Customer Success Lead"
 operator_email: "you@example.com"
+agent_name: ""
+agent_email: ""
 
 # --- AI Customization ---
 # Point at external prompt files to override the engine's built-in prompts
@@ -102,9 +105,13 @@ scheduler:
 
   business_hours:
     timezone: "America/New_York"
-    start: "09:00"
-    end: "17:00"
-    weekdays_only: true
+    # weekday 0 = Sunday .. 6 = Saturday
+    working_hours:
+      - { weekday: 1, open_at: "09:00", close_at: "17:00" }  # Mon
+      - { weekday: 2, open_at: "09:00", close_at: "17:00" }  # Tue
+      - { weekday: 3, open_at: "09:00", close_at: "17:00" }  # Wed
+      - { weekday: 4, open_at: "09:00", close_at: "17:00" }  # Thu
+      - { weekday: 5, open_at: "09:00", close_at: "17:00" }  # Fri
 
   appointment_slot_minutes: 30
   appointment_buffer_minutes: 15

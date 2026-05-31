@@ -8,81 +8,64 @@ from typing import Any
 from pydantic import BaseModel, Field
 from zoneinfo import ZoneInfo
 
-DAY_NAMES = (
-    "monday",
-    "tuesday",
-    "wednesday",
-    "thursday",
-    "friday",
-    "saturday",
-    "sunday",
-)
+
+def weekday_sunday0(d: date) -> int:
+    """Map a calendar date to 0=Sunday .. 6=Saturday."""
+    return (d.weekday() + 1) % 7
 
 
-class DaySchedule(BaseModel):
-    start: str = "09:00"
-    end: str = "17:00"
-    enabled: bool = True
+class WorkingWindow(BaseModel):
+    weekday: int  # 0=Sunday .. 6=Saturday
+    open_at: str = "09:00"
+    close_at: str = "17:00"
 
 
 class BusinessHours(BaseModel):
     timezone: str = "America/New_York"
-    schedule: dict[str, DaySchedule] = Field(default_factory=dict)
+    working_hours: list[WorkingWindow] = Field(default_factory=list)
+
+    @classmethod
+    def default(cls) -> BusinessHours:
+        """Mon–Fri 09:00–17:00 in America/New_York (weekday 0 = Sunday)."""
+        return cls(
+            timezone="America/New_York",
+            working_hours=[
+                WorkingWindow(weekday=i, open_at="09:00", close_at="17:00")
+                for i in range(1, 6)
+            ],
+        )
 
     @classmethod
     def from_config(cls, raw: dict[str, Any]) -> BusinessHours:
         tz = raw.get("timezone", "America/New_York")
+        if "working_hours" not in raw:
+            raise ValueError(
+                "business_hours.working_hours is required "
+                "(numeric weekday list; weekday 0 = Sunday)"
+            )
 
-        if "schedule" in raw:
-            schedule: dict[str, DaySchedule] = {}
-            raw_schedule = raw.get("schedule") or {}
-            normalized = {str(k).lower(): v for k, v in raw_schedule.items()}
-            for day in DAY_NAMES:
-                day_raw = normalized.get(day)
-                if day_raw is None:
-                    schedule[day] = DaySchedule(enabled=False)
-                elif isinstance(day_raw, DaySchedule):
-                    schedule[day] = day_raw
-                else:
-                    schedule[day] = DaySchedule(**day_raw)
-            return cls(timezone=tz, schedule=schedule)
+        windows: list[WorkingWindow] = []
+        for entry in raw.get("working_hours") or []:
+            if isinstance(entry, WorkingWindow):
+                windows.append(entry)
+            else:
+                windows.append(WorkingWindow(**entry))
+        return cls(timezone=tz, working_hours=windows)
 
-        start = raw.get("start", "09:00")
-        end = raw.get("end", "17:00")
-        weekdays_only = raw.get("weekdays_only", True)
-        schedule = {}
-        for i, day in enumerate(DAY_NAMES):
-            enabled = (i < 5) if weekdays_only else True
-            schedule[day] = DaySchedule(start=start, end=end, enabled=enabled)
-        return cls(timezone=tz, schedule=schedule)
-
-    @classmethod
-    def default_legacy(cls) -> BusinessHours:
-        return cls.from_config(
-            {
-                "timezone": "America/New_York",
-                "start": "09:00",
-                "end": "17:00",
-                "weekdays_only": True,
-            }
-        )
-
-    def day_name_for(self, d: date) -> str:
-        return DAY_NAMES[d.weekday()]
-
-    def schedule_for_date(self, d: date) -> DaySchedule:
-        return self.schedule[self.day_name_for(d)]
+    def windows_for_date(self, d: date) -> list[WorkingWindow]:
+        wd = weekday_sunday0(d)
+        return [w for w in self.working_hours if w.weekday == wd]
 
     def is_business_hours(self, moment: datetime | None = None) -> bool:
         tz = ZoneInfo(self.timezone)
         local = (moment or datetime.now(tz)).astimezone(tz)
-        day_sched = self.schedule_for_date(local.date())
-        if not day_sched.enabled:
-            return False
-        start_t = parse_hhmm(day_sched.start)
-        end_t = parse_hhmm(day_sched.end)
         now_t = local.time()
-        return start_t <= now_t <= end_t
+        for window in self.windows_for_date(local.date()):
+            start_t = parse_hhmm(window.open_at)
+            end_t = parse_hhmm(window.close_at)
+            if start_t <= now_t <= end_t:
+                return True
+        return False
 
 
 def is_business_hours(
