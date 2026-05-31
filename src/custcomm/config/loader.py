@@ -83,7 +83,7 @@ class HistoryConfig(BaseModel):
 
 class SchedulerConfig(BaseModel):
     followup_days: list[int] = [2, 5, 10]
-    business_hours: BusinessHours = Field(default_factory=BusinessHours.default_legacy)
+    business_hours: BusinessHours = Field(default_factory=BusinessHours.default)
     appointment_slot_minutes: int = 30
     appointment_buffer_minutes: int = 15
 
@@ -107,6 +107,8 @@ class CustCommConfig(BaseModel):
     operator_name: str
     operator_email: str
     operator_title: str = ""
+    agent_name: str = ""
+    agent_email: str = ""
 
     ai: AIConfig = AIConfig()
     inbox: InboxConfig = InboxConfig()
